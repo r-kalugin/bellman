@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Алгоритм Беллмана — Знаходження найкоротших шляхів</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        code, pre {
+            font-family: 'Fira Code', monospace;
+        }
+        .graph-node {
+            cursor: move;
+            transition: fill 0.2s, stroke 0.2s, r 0.2s;
+        }
+        .graph-node:hover {
+            filter: drop-shadow(0 4px 6px rgba(37, 99, 235, 0.3));
+        }
+        .graph-edge {
+            transition: stroke 0.3s, stroke-width 0.3s;
+        }
+        .graph-edge.highlighted {
+            stroke: #2563eb !important;
+            stroke-width: 3.5px !important;
+            filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.5));
+        }
+        .node-highlighted {
+            fill: #3b82f6 !important;
+            stroke: #1d4ed8 !important;
+            stroke-width: 3px !important;
+        }
+        .node-start {
+            fill: #10b981 !important;
+            stroke: #047857 !important;
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid font-bold text-lg">λ</i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        Алгоритм Беллмана
+                    
+                    </h1>
+                    <p class="text-xs text-slate-5 font-medium text-slate-500">
+                        Знаходження найкоротших шляхів у зваженому орієнтованому графі
+                    </p>
+                </div>
+            </div>
+
+            <!-- Global Action Bar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="loadPreset('test7')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 border border-brand-200 hover:bg-brand-100 transition flex items-center gap-1.5">
+                    <i class="fa-solid font-normal fa-vial"></i> Тестовий граф (n=7)
+                </button>
+                <button onclick="loadPreset('random')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-dice"></i> Випадковий
+                </button>
+                <button onclick="clearGraph()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can"></i> Очистити
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: GRAPH & MATRIX (5/12) -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- CONFIGURATION PANEL -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-brand-600"></i> Параметри графа
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Vertex Count -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Кількість вершин (n):</label>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="changeN(-1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition flex items-center justify-center">-</button>
+                            <input type="number" id="inputN" min="2" max="12" value="7" onchange="setN(parseInt(this.value))" class="w-full text-center py-1 font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <button onclick="changeN(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition flex items-center justify-center">+</button>
+                        </div>
+                    </div>
+                    <!-- Start Vertex -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Початкова вершина (v<sub>s</sub>):</label>
+                        <select id="startVertexSelect" onchange="setStartVertex(parseInt(this.value))" class="w-full py-1.5 px-3 font-semibold text-brand-700 bg-brand-50 border border-brand-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SVG VISUALIZATION CARD -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-nodes text-brand-600"></i> Візуалізація графа
+                    </span>
+                    <span class="text-[11px] text-slate-500 flex items-center gap-1">
+                        <i class="fa-solid fa-hand-pointer text-slate-400"></i> Вершини можна перетягувати
+                    </span>
+                </div>
+                
+                <div class="relative w-full h-[360px] bg-slate-900/5 overflow-hidden flex items-center justify-center">
+                    <svg id="graphSvg" class="w-full h-full select-none"></svg>
+
+                    <!-- SVG Helper Floating Controls -->
+                    <div class="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-xl shadow-sm border border-slate-200 text-xs">
+                        <button onclick="arrangeInCircle()" title="Впорядкувати по колу" class="p-1.5 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                        <button onclick="resetHighlight()" title="Скинути підсвічування" class="p-1.5 text-slate-600 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs flex flex-wrap items-center justify-around gap-2 text-slate-600">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Початкова (v<sub>s</sub>)
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-brand-500 inline-block"></span> Активний шлях
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-slate-400 inline-block"></span> Звичайна вершина
+                    </div>
+                </div>
+            </div>
+
+            <!-- WEIGHT MATRIX INPUT CARD -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-table-cells text-brand-600"></i> Матриця ваг (W)
+                    </h2>
+                    <span class="text-[11px] text-slate-500">
+                        <span class="font-semibold text-slate-700">0</span> або порожньо = ∞ (нескінченність)
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto max-h-[300px] border border-slate-200 rounded-xl">
+                    <table class="w-full text-center border-collapse text-xs">
+                        <thead id="matrixHead" class="bg-slate-100 text-slate-600 font-semibold sticky top-0 z-10">
+                            <!-- Populated dynamically -->
+                        </thead>
+                        <tbody id="matrixBody" class="divide-y divide-slate-200 bg-white">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: RESULTS, TABBED PANELS (7/12) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- TAB NAVIGATION HEADER -->
+            <div class="bg-white rounded-2xl p-1.5 shadow-sm border border-slate-200 flex flex-wrap gap-1">
+                <button onclick="switchTab('summary')" id="tabBtn-summary" class="tab-btn flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl text-brand-700 bg-brand-50 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-route"></i> Найкоротші шляхи
+                </button>
+                <button onclick="switchTab('lambda')" id="tabBtn-lambda" class="tab-btn flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-table"></i> Матриця Λ
+                </button>
+                <button onclick="switchTab('protocol')" id="tabBtn-protocol" class="tab-btn flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> Протокол обчислень
+                </button>
+            </div>
+
+            <!-- TAB 1: SUMMARY OF SHORTEST PATHS -->
+            <div id="tab-summary" class="tab-content bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col gap-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            Підсумкова таблиця мінімальних шляхів
+                        </h3>
+                        <p class="text-xs text-slate-500">
+                            Результат виконання алгоритму Беллмана для початкової вершини <span id="summaryStartLabel" class="font-bold text-brand-600">v1</span>
+                        </p>
+                    </div>
+                    <div id="negativeCycleBadge" class="hidden px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Виявлено від'ємний цикл!
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">Цільова вершина</th>
+                                <th class="p-3 text-center">Мін. дуг (m*)</th>
+                                <th class="p-3 text-center">Вага шляху (λ)</th>
+                                <th class="p-3">Оптимальний маршрут</th>
+                                <th class="p-3 text-center">Дія</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summaryTableBody" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: LAMBDA MATRIX TABLE -->
+            <div id="tab-lambda" class="tab-content hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col gap-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <h3 class="text-base font-bold text-slate-900">
+                        Матриця значень лямбда (Λ)
+                    </h3>
+                    <p class="text-xs text-slate-500">
+                       
+                    </p>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-center text-xs border-collapse">
+                        <thead id="lambdaHead" class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <!-- Dynamically populated -->
+                        </thead>
+                        <tbody id="lambdaBody" class="divide-y divide-slate-200 bg-white font-mono">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: DETAILED PROTOCOL -->
+            <div id="tab-protocol" class="tab-content hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col gap-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">
+                            Покроковий математичний протокол
+                        </h3>
+                        <p class="text-xs text-slate-500">
+                           
+                        </p>
+                    </div>
+
+                    <!-- Step Filter Dropdown -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-semibold text-slate-600">Крок (m):</label>
+                        <select id="protocolStepSelect" onchange="renderProtocol()" class="py-1 px-3 text-xs font-semibold text-slate-800 bg-slate-100 border border-slate-300 rounded-lg focus:outline-none">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                </div>
+
+                <div id="protocolContainer" class="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-1">
+                    <!-- Step calculation cards rendered here -->
+                </div>
+            </div>
+
+            <!-- TAB 4: ORIGINAL C++ CODE -->
+            <div id="tab-code" class="tab-content hidden bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5 flex flex-col gap-4 text-slate-200">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-code text-brand-500"></i> Вихідний код C++ (Bellman.cpp)
+                        </h3>
+                        <p class="text-xs text-slate-400">
+                            Консольна реалізація алгоритму Беллмана з покроковим виводом лямбда-матриці
+                        </p>
+                    </div>
+                    <button onclick="copyCppCode()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-copy"></i> Скопіювати
+                    </button>
+                </div>
+
+                <pre class="text-xs bg-slate-950 p-4 rounded-xl overflow-x-auto font-mono text-emerald-400 border border-slate-800 leading-relaxed max-h-[460px]"><code id="cppCodeText">#include "stdafx.h"
+#include &lt;iostream&gt;
+#include &lt;stdio.h&gt;
+#include &lt;conio.h&gt;
+#include "windows.h"
+using namespace std;
+
+int main()
+{
+    SetConsoleCP(1251);
+    SetConsoleOutputCP(1251);
+    int n;
+    const float SUP = 10000;
+
+    cout &lt;&lt; "Для реалізації алгоритму Беллмана знаходження мінімального шляху \n в заданому зваженому орієнтованому графі побудуйте матрицю ваг цього графа" &lt;&lt; endl;
+    cout &lt;&lt; "Вкажіть порядок матриці ваг графа:" &lt;&lt; endl;
+    cin &gt;&gt; n;
+
+    float w[100][100];
+    float lmd[100][100];
+    float l[100];
+
+    /* Заповнення та заміна 0 на SUP (нескінченність) */
+    for (int i = 0; i &lt; n; i++) {
+        for (int j = 0; j &lt; n; j++) {
+            cin &gt;&gt; w[i][j];
+            if (w[i][j] == 0) w[i][j] = SUP;
+        }
+    }
+
+    /* Початкові значення лямбда */
+    lmd[0][0] = 0;
+    for (int j = 1; j &lt; n; j++) {
+        lmd[0][j] = 0;
+        lmd[j][0] = SUP;
+    }
+
+    /* Обчислення лямбда(m) для кожного кроку m */
+    int coll;
+    int index[100][100];
+    for (int m = 1; m &lt; n; m++) {
+        for (int k = 1; k &lt; n; k++) {
+            coll = 0;
+            for (int i = 0; i &lt; n; i++) {
+                l[i] = (lmd[i][m-1]) + (w[i][k]);
+            }
+            float min = l[0];
+            for (int t = 0; t &lt; n; t++) {
+                if (l[t] &lt;= min) {
+                    min = l[t];
+                    index[k][m] = t + 1;
+                }
+            }
+            lmd[k][m] = min;
+        }
+    }
+
+    return 0;
+}</code></pre>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+            
+          
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Global Constants & State
+        const SUP = 10000; // Infinity value matching C++ standard
+        let n = 7;
+        let startVertex = 0; // 0-indexed (v1 -> 0)
+        let W = []; // Weight matrix n x n
+        let nodePositions = []; // {x, y} relative positions
+        let activeHighlightedPath = null; // Array of 0-based vertex indices
+
+        // Results state from Bellman algorithm
+        let bellmanResult = {
+            lmd: [],
+            index: [],
+            paths: [],
+            hasNegativeCycle: false,
+            protocol: []
+        };
+
+        // Pre-loaded Test Matrix from prompt (7x7)
+        const PRESET_TEST7 = [
+            [0, 0, 5, 4, 2, 2, 9],
+            [0, 0, 1, 1, 0, 1, 1],
+            [2, 0, 0, 1, 1, 0, 3],
+            [0, 2, 1, 0, 1, 0, 0],
+            [0, 0, 2, 2, 0, 1, 6],
+            [1, 5, 0, 1, 1, 0, 0],
+            [2, 0, 1, 0, 1, 2, 0]
+        ];
+
+        // Alternative Preset with Negative Weights (5x5)
+        const PRESET_NEGATIVE = [
+            [0, 6, 7, 0, 0],
+            [0, 0, 8, 5, -4],
+            [0, 0, 0, -3, 9],
+            [0, -2, 0, 0, 0],
+            [2, 0, 0, 7, 0]
+        ];
+
+        // Initialization on page load
+        window.onload = function() {
+            loadPreset('test7');
+            setupDragAndDrop();
+        };
+
+        // Preset Loaders
+        function loadPreset(type) {
+            activeHighlightedPath = null;
+            if (type === 'test7') {
+                n = 7;
+                startVertex = 0;
+                W = PRESET_TEST7.map(row => [...row]);
+            } else if (type === 'negative') {
+                n = 5;
+                startVertex = 0;
+                W = PRESET_NEGATIVE.map(row => [...row]);
+            } else if (type === 'random') {
+                n = 6;
+                startVertex = 0;
+                W = Array.from({length: n}, () => Array(n).fill(0));
+                for(let i=0; i<n; i++) {
+                    for(let j=0; j<n; j++) {
+                        if (i !== j && Math.random() > 0.55) {
+                            W[i][j] = Math.floor(Math.random() * 9) + 1;
+                        }
+                    }
+                }
+            } else if (type === 'clear') {
+                W = Array.from({length: n}, () => Array(n).fill(0));
+            }
+            
+            document.getElementById('inputN').value = n;
+            arrangeInCircle();
+            updateAll();
+        }
+
+        function clearGraph() {
+            loadPreset('clear');
+        }
+
+        function changeN(delta) {
+            setN(n + delta);
+        }
+
+        function setN(newN) {
+            if (isNaN(newN) || newN < 2) newN = 2;
+            if (newN > 12) newN = 12;
+            
+            const oldN = n;
+            n = newN;
+            document.getElementById('inputN').value = n;
+
+            // Adjust Matrix size
+            let newW = Array.from({length: n}, () => Array(n).fill(0));
+            for (let i = 0; i < Math.min(oldN, n); i++) {
+                for (let j = 0; j < Math.min(oldN, n); j++) {
+                    newW[i][j] = W[i][j];
+                }
+            }
+            W = newW;
+            if (startVertex >= n) startVertex = 0;
+
+            arrangeInCircle();
+            updateAll();
+        }
+
+        function setStartVertex(val) {
+            startVertex = val;
+            activeHighlightedPath = null;
+            updateAll();
+        }
+
+        // Arrange Graph Nodes in Circle
+        function arrangeInCircle() {
+            const centerX = 200;
+            const centerY = 180;
+            const radius = 130;
+            nodePositions = [];
+
+            for (let i = 0; i < n; i++) {
+                const angle = (2 * Math.PI * i / n) - (Math.PI / 2);
+                nodePositions.push({
+                    x: centerX + radius * Math.cos(angle),
+                    y: centerY + radius * Math.sin(angle)
+                });
+            }
+            renderSvgGraph();
+        }
+
+        // Master Update Trigger
+        function updateAll() {
+            populateStartSelect();
+            renderMatrixInputs();
+            runBellmanAlgorithm();
+            renderSummaryTable();
+            renderLambdaMatrixTable();
+            renderProtocolOptions();
+            renderProtocol();
+            renderSvgGraph();
+        }
+
+        function populateStartSelect() {
+            const select = document.getElementById('startVertexSelect');
+            select.innerHTML = '';
+            for (let i = 0; i < n; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `Вершина v${i + 1}`;
+                if (i === startVertex) opt.selected = true;
+                select.appendChild(opt);
+            }
+            document.getElementById('summaryStartLabel').textContent = `v${startVertex + 1}`;
+        }
+
+        // ==========================================
+        // BELLMAN ALGORITHM ENGINE (Strict Fidelity to C++)
+        // ==========================================
+        function runBellmanAlgorithm() {
+            // Convert W to working matrix where 0 or no connection = SUP (10000)
+            let wMat = Array.from({length: n}, (_, i) => 
+                Array.from({length: n}, (_, j) => {
+                    let val = W[i][j];
+                    if (val === 0 || val === null || val === undefined) return SUP;
+                    return val;
+                })
+            );
+
+            // lmd[vertex_k][step_m]
+            let lmd = Array.from({length: n}, () => Array(n).fill(SUP));
+            let indexMat = Array.from({length: n}, () => Array(n).fill(-1));
+            let protocol = [];
+
+            // Step m=0 initialization
+            lmd[startVertex][0] = 0;
+            for (let m = 0; m < n; m++) {
+                lmd[startVertex][m] = 0;
+            }
+
+            // Calculations for m = 1 to n-1
+            for (let m = 1; m < n; m++) {
+                let stepLogs = [];
+                for (let k = 0; k < n; k++) {
+                    if (k === startVertex) {
+                        lmd[k][m] = 0;
+                        continue;
+                    }
+
+                    let candidates = [];
+                    let lVals = [];
+
+                    for (let i = 0; i < n; i++) {
+                        let prevL = lmd[i][m - 1];
+                        let wEdge = wMat[i][k];
+                        let sumVal = (prevL === SUP || wEdge === SUP) ? SUP : (prevL + wEdge);
+                        
+                        lVals[i] = sumVal;
+                        candidates.push({
+                            from: i,
+                            prevL: prevL,
+                            wEdge: wEdge,
+                            sum: sumVal
+                        });
+                    }
+
+                    // Find minimum using C++ tie-breaking logic (<= condition)
+                    let minVal = lVals[0];
+                    let bestIdx = 0;
+                    for (let t = 0; t < n; t++) {
+                        if (lVals[t] <= minVal) {
+                            minVal = lVals[t];
+                            bestIdx = t;
+                        }
+                    }
+
+                    lmd[k][m] = minVal;
+                    indexMat[k][m] = (minVal === SUP) ? -1 : bestIdx;
+
+                    stepLogs.push({
+                        target: k,
+                        candidates: candidates,
+                        minVal: minVal,
+                        selectedPrev: (minVal === SUP) ? null : bestIdx
+                    });
+                }
+                protocol.push({ step: m, logs: stepLogs });
+            }
+
+            // Check for negative cycle (step m = n check)
+            let hasNegativeCycle = false;
+            for (let k = 0; k < n; k++) {
+                if (k === startVertex) continue;
+                for (let i = 0; i < n; i++) {
+                    if (lmd[i][n - 1] !== SUP && wMat[i][k] !== SUP) {
+                        if (lmd[i][n - 1] + wMat[i][k] < lmd[k][n - 1]) {
+                            hasNegativeCycle = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Path Reconstruction for each target vertex k
+            let paths = [];
+            for (let k = 0; k < n; k++) {
+                if (k === startVertex) {
+                    paths.push({ target: k, minArcs: 0, weight: 0, pathNodes: [startVertex], reachable: true });
+                    continue;
+                }
+
+                let finalWeight = lmd[k][n - 1];
+                if (finalWeight >= SUP / 2) {
+                    paths.push({ target: k, minArcs: '—', weight: SUP, pathNodes: [], reachable: false });
+                    continue;
+                }
+
+                // Find smallest arc count `in` where value stabilizes (matching C++ while loop)
+                let stepIn = n - 1;
+                while (stepIn > 1 && lmd[k][stepIn - 1] === lmd[k][stepIn]) {
+                    stepIn--;
+                }
+
+                // Trace back path from stepIn
+                let pathNodes = new Array(stepIn + 1);
+                pathNodes[stepIn] = k;
+                let curr = k;
+
+                for (let step = stepIn; step > 0; step--) {
+                    let prev = indexMat[curr][step];
+                    if (prev === -1) break;
+                    pathNodes[step - 1] = prev;
+                    curr = prev;
+                }
+
+                paths.push({
+                    target: k,
+                    minArcs: stepIn,
+                    weight: finalWeight,
+                    pathNodes: pathNodes,
+                    reachable: true
+                });
+            }
+
+            bellmanResult = {
+                lmd: lmd,
+                index: indexMat,
+                paths: paths,
+                hasNegativeCycle: hasNegativeCycle,
+                protocol: protocol
+            };
+
+            // Badge toggle
+            const badge = document.getElementById('negativeCycleBadge');
+            if (hasNegativeCycle) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+        }
+
+        // ==========================================
+        // UI RENDERING FUNCTIONS
+        // ==========================================
+
+        // Render Matrix Input Grid
+        function renderMatrixInputs() {
+            const head = document.getElementById('matrixHead');
+            const body = document.getElementById('matrixBody');
+
+            let headHtml = `<tr><th class="p-2 border-b border-r border-slate-200 bg-slate-200 text-slate-700">v<sub>i</sub> \\ v<sub>j</sub></th>`;
+            for (let j = 0; j < n; j++) {
+                headHtml += `<th class="p-2 border-b border-slate-200 text-slate-700">v<sub>${j + 1}</sub></th>`;
+            }
+            headHtml += `</tr>`;
+            head.innerHTML = headHtml;
+
+            let bodyHtml = '';
+            for (let i = 0; i < n; i++) {
+                bodyHtml += `<tr><td class="p-2 font-bold bg-slate-100 text-slate-700 border-r border-slate-200">v<sub>${i + 1}</sub></td>`;
+                for (let j = 0; j < n; j++) {
+                    let val = W[i][j];
+                    let displayVal = (val === 0 || val === null || val === undefined) ? '' : val;
+                    let isSelf = (i === j);
+
+                    bodyHtml += `<td class="p-1">
+                        <input type="number" 
+                            value="${displayVal}" 
+                            placeholder="∞"
+                            ${isSelf ? 'disabled class="bg-slate-100 cursor-not-allowed"' : ''}
+                            onchange="updateMatrixCell(${i}, ${j}, this.value)"
+                            class="w-12 h-8 text-center text-xs font-semibold rounded-md border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none transition ${isSelf ? 'text-slate-400' : 'text-slate-800 bg-white hover:border-slate-400'}">
+                    </td>`;
+                }
+                bodyHtml += `</tr>`;
+            }
+            body.innerHTML = bodyHtml;
+        }
+
+        function updateMatrixCell(r, c, value) {
+            let parsed = parseInt(value);
+            if (isNaN(parsed) || parsed === 0) {
+                W[r][c] = 0;
+            } else {
+                W[r][c] = parsed;
+            }
+            activeHighlightedPath = null;
+            updateAll();
+        }
+
+        // Summary Table Tab
+        function renderSummaryTable() {
+            const body = document.getElementById('summaryTableBody');
+            body.innerHTML = '';
+
+            bellmanResult.paths.forEach((p, k) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+
+                let pathText = '';
+                if (!p.reachable) {
+                    pathText = '<span class="text-slate-400 italic">Шлях відсутній</span>';
+                } else {
+                    pathText = p.pathNodes.map(idx => `<span class="px-2 py-0.5 rounded font-mono font-bold ${idx === startVertex ? 'bg-emerald-100 text-emerald-800' : 'bg-brand-50 text-brand-700'}">v${idx + 1}</span>`).join(' <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i> ');
+                }
+
+                let weightText = (p.weight >= SUP / 2) ? '<span class="text-rose-500 font-bold">∞</span>' : `<span class="font-bold text-slate-900">${p.weight}</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-800">v<sub>${k + 1}</sub> ${k === startVertex ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-1 font-normal">Старт</span>' : ''}</td>
+                    <td class="p-3 text-center font-semibold text-slate-600">${p.minArcs}</td>
+                    <td class="p-3 text-center">${weightText}</td>
+                    <td class="p-3 flex items-center gap-1 flex-wrap">${pathText}</td>
+                    <td class="p-3 text-center">
+                        ${p.reachable ? `<button onclick="highlightPath([${p.pathNodes.join(',')}])" class="px-2.5 py-1 text-[11px] font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 rounded-lg transition">
+                            <i class="fa-solid fa-eye"></i> Показати
+                        </button>` : ''}
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        // Lambda Matrix Table Tab
+        function renderLambdaMatrixTable() {
+            const head = document.getElementById('lambdaHead');
+            const body = document.getElementById('lambdaBody');
+
+            let headHtml = `<tr><th class="p-2 border-r border-slate-200">i</th>`;
+            for (let m = 0; m < n; m++) {
+                headHtml += `<th class="p-2">Λ<sup>(${m})</sup></th>`;
+            }
+            headHtml += `</tr>`;
+            head.innerHTML = headHtml;
+
+            let bodyHtml = '';
+            for (let i = 0; i < n; i++) {
+                bodyHtml += `<tr class="hover:bg-slate-50"><td class="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-200">v<sub>${i + 1}</sub></td>`;
+                for (let m = 0; m < n; m++) {
+                    let val = bellmanResult.lmd[i][m];
+                    let text = (val >= SUP / 2) ? '∞' : val;
+                    let isStart = (i === startVertex);
+                    let minArcs = bellmanResult.paths[i]?.minArcs;
+                    let isMinStabilized = (m === minArcs && !isStart);
+
+                    bodyHtml += `<td class="p-2 ${isStart ? 'bg-emerald-50 text-emerald-700 font-bold' : isMinStabilized ? 'bg-blue-100 text-brand-800 font-extrabold border border-brand-300' : 'text-slate-700'}">
+                        ${text}
+                    </td>`;
+                }
+                bodyHtml += `</tr>`;
+            }
+            body.innerHTML = bodyHtml;
+        }
+
+        // Render Step Options Dropdown
+        function renderProtocolOptions() {
+            const select = document.getElementById('protocolStepSelect');
+            select.innerHTML = '';
+            for (let m = 1; m < n; m++) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = `Крок m = ${m}`;
+                select.appendChild(opt);
+            }
+        }
+
+        // Render Step Protocol Tab
+        function renderProtocol() {
+            const container = document.getElementById('protocolContainer');
+            const select = document.getElementById('protocolStepSelect');
+            if (!select.value) return;
+            const stepM = parseInt(select.value);
+
+            const stepData = bellmanResult.protocol.find(p => p.step === stepM);
+            if (!stepData) {
+                container.innerHTML = '<p class="text-xs text-slate-500">Немає даних для цього кроку.</p>';
+                return;
+            }
+
+            let html = '';
+            stepData.logs.forEach(log => {
+                let targetIdx = log.target;
+                html += `
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-brand-500"></span> Пошук min для λ<sup>(${stepM})</sup> при і = ${targetIdx + 1} (вершина v<sub>${targetIdx + 1}</sub>)
+                        </span>
+                        <span class="text-xs font-mono font-bold ${log.minVal >= SUP / 2 ? 'text-rose-600' : 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200'}">
+                            min = ${log.minVal >= SUP / 2 ? '∞' : log.minVal}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-1">
+                `;
+
+                log.candidates.forEach(c => {
+                    let prevLText = (c.prevL >= SUP / 2) ? '∞' : c.prevL;
+                    let wText = (c.wEdge >= SUP / 2) ? '∞' : c.wEdge;
+                    let sumText = (c.sum >= SUP / 2) ? '∞' : c.sum;
+                    let isSelected = (c.from === log.selectedPrev && log.minVal < SUP / 2);
+
+                    html += `
+                    <div class="p-2 rounded-lg text-xs font-mono border ${isSelected ? 'bg-blue-50 border-brand-300 text-brand-900 font-semibold' : 'bg-white border-slate-200 text-slate-600'} flex items-center justify-between">
+                        <span>v<sub>${c.from + 1}</sub>: ${prevLText} + ${wText}</span>
+                        <span class="font-bold">${sumText} ${isSelected ? '<i class="fa-solid fa-check text-brand-600 ml-1"></i>' : ''}</span>
+                    </div>`;
+                });
+
+                html += `
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // SVG GRAPH RENDERING & INTERACTION
+        // ==========================================
+        function renderSvgGraph() {
+            const svg = document.getElementById('graphSvg');
+            svg.innerHTML = '';
+
+            // Marker Defs for Directed Arrows
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            defs.innerHTML = `
+                <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+                </marker>
+                <marker id="arrow-active" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+                </marker>
+            `;
+            svg.appendChild(defs);
+
+            // Draw Edges (Arcs)
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (i === j) continue;
+                    let weight = W[i][j];
+                    if (weight === 0 || weight === null || weight === undefined) continue;
+
+                    let p1 = nodePositions[i];
+                    let p2 = nodePositions[j];
+
+                    // Check if bidirectional edge exists
+                    let isBidirectional = (W[j][i] !== 0 && W[j][i] !== null && W[j][i] !== undefined);
+                    let isHighlighted = isEdgeInActivePath(i, j);
+
+                    let pathD = '';
+                    let midX = 0, midY = 0;
+
+                    if (isBidirectional) {
+                        // Curve path using quadratic bezier
+                        let dx = p2.x - p1.x;
+                        let dy = p2.y - p1.y;
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        let offset = 25; // Curve curvature offset
+
+                        let nx = -dy / dist;
+                        let ny = dx / dist;
+
+                        let cx = (p1.x + p2.x) / 2 + nx * offset;
+                        let cy = (p1.y + p2.y) / 2 + ny * offset;
+
+                        pathD = `M ${p1.x} ${p1.y} Q ${cx} ${cy} ${p2.x} ${p2.y}`;
+                        midX = (p1.x + 2 * cx + p2.x) / 4;
+                        midY = (p1.y + 2 * cy + p2.y) / 4;
+                    } else {
+                        // Straight edge
+                        pathD = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+                        midX = (p1.x + p2.x) / 2;
+                        midY = (p1.y + p2.y) / 2;
+                    }
+
+                    // Create Edge Path
+                    const edgePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    edgePath.setAttribute('d', pathD);
+                    edgePath.setAttribute('fill', 'none');
+                    edgePath.setAttribute('stroke', isHighlighted ? '#2563eb' : '#cbd5e1');
+                    edgePath.setAttribute('stroke-width', isHighlighted ? '3.5' : '1.8');
+                    edgePath.setAttribute('marker-end', isHighlighted ? 'url(#arrow-active)' : 'url(#arrow)');
+                    edgePath.setAttribute('class', `graph-edge ${isHighlighted ? 'highlighted' : ''}`);
+                    svg.appendChild(edgePath);
+
+                    // Edge Weight Badge
+                    const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', midX - 10);
+                    rect.setAttribute('y', midY - 9);
+                    rect.setAttribute('width', 20);
+                    rect.setAttribute('height', 16);
+                    rect.setAttribute('rx', 4);
+                    rect.setAttribute('fill', isHighlighted ? '#2563eb' : '#ffffff');
+                    rect.setAttribute('stroke', isHighlighted ? '#1d4ed8' : '#e2e8f0');
+                    rect.setAttribute('stroke-width', '1');
+
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', midX);
+                    text.setAttribute('y', midY + 3);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('font-size', '10');
+                    text.setAttribute('font-weight', 'bold');
+                    text.setAttribute('fill', isHighlighted ? '#ffffff' : '#334155');
+                    text.textContent = weight;
+
+                    textGroup.appendChild(rect);
+                    textGroup.appendChild(text);
+                    svg.appendChild(textGroup);
+                }
+            }
+
+            // Draw Vertices (Nodes)
+            for (let i = 0; i < n; i++) {
+                const pos = nodePositions[i];
+                const isStart = (i === startVertex);
+                const isInPath = activeHighlightedPath ? activeHighlightedPath.includes(i) : false;
+
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('class', 'cursor-pointer');
+                group.setAttribute('data-node-idx', i);
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', pos.x);
+                circle.setAttribute('cy', pos.y);
+                circle.setAttribute('r', isStart ? '18' : '16');
+
+                let nodeClass = 'graph-node ';
+                if (isStart) nodeClass += 'node-start';
+                else if (isInPath) nodeClass += 'node-highlighted';
+                else circle.setAttribute('fill', '#ffffff'), circle.setAttribute('stroke', '#64748b'), circle.setAttribute('stroke-width', '2');
+
+                circle.setAttribute('class', nodeClass);
+
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', pos.x);
+                label.setAttribute('y', pos.y + 4);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('font-size', '12');
+                label.setAttribute('font-weight', 'bold');
+                label.setAttribute('fill', (isStart || isInPath) ? '#ffffff' : '#1e293b');
+                label.textContent = `v${i + 1}`;
+
+                group.appendChild(circle);
+                group.appendChild(label);
+
+                // Click node to view path to it
+                group.addEventListener('click', () => {
+                    let pData = bellmanResult.paths[i];
+                    if (pData && pData.reachable) {
+                        highlightPath(pData.pathNodes);
+                    }
+                });
+
+                svg.appendChild(group);
+            }
+        }
+
+        function isEdgeInActivePath(u, v) {
+            if (!activeHighlightedPath || activeHighlightedPath.length < 2) return false;
+            for (let k = 0; k < activeHighlightedPath.length - 1; k++) {
+                if (activeHighlightedPath[k] === u && activeHighlightedPath[k + 1] === v) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function highlightPath(nodeArray) {
+            activeHighlightedPath = nodeArray;
+            renderSvgGraph();
+        }
+
+        function resetHighlight() {
+            activeHighlightedPath = null;
+            renderSvgGraph();
+        }
+
+        // SVG Drag & Drop Implementation
+        function setupDragAndDrop() {
+            const svg = document.getElementById('graphSvg');
+            let draggedNodeIdx = null;
+
+            svg.addEventListener('mousedown', (e) => {
+                const targetNode = e.target.closest('[data-node-idx]');
+                if (targetNode) {
+                    draggedNodeIdx = parseInt(targetNode.getAttribute('data-node-idx'));
+                }
+            });
+
+            svg.addEventListener('mousemove', (e) => {
+                if (draggedNodeIdx !== null) {
+                    const rect = svg.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    // Keep node within SVG bounds
+                    nodePositions[draggedNodeIdx] = {
+                        x: Math.max(20, Math.min(rect.width - 20, x)),
+                        y: Math.max(20, Math.min(rect.height - 20, y))
+                    };
+                    renderSvgGraph();
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                draggedNodeIdx = null;
+            });
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-brand-50', 'text-brand-700');
+                el.classList.add('text-slate-600', 'hover:bg-slate-100');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+            activeBtn.classList.add('bg-brand-50', 'text-brand-700');
+            activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+        }
+
+        // Code Copy Helper
+        function copyCppCode() {
+            const codeText = document.getElementById('cppCodeText').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = codeText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            alert('Вихідний C++ код успішно скопійовано в буфер обміну!');
+        }
+    </script>
+</body>
+</html>
