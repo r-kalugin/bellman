@@ -26,6 +26,10 @@
     </script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +42,14 @@
         }
         code, pre {
             font-family: 'Fira Code', monospace;
+        }
+        .katex {
+            font-size: 1.05em;
+            line-height: 1;
+        }
+        .katex-html {
+            display: inline-flex;
+            align-items: baseline;
         }
         .graph-node {
             cursor: move;
@@ -93,12 +105,11 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
-                    <i class="fa-solid font-bold text-lg">λ</i>
+                    <span class="font-bold text-lg">$\lambda$</span>
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
                         Алгоритм Беллмана
-                    
                     </h1>
                     <p class="text-xs text-slate-5 font-medium text-slate-500">
                         Знаходження найкоротших шляхів у зваженому орієнтованому графі
@@ -109,7 +120,7 @@
             <!-- Global Action Bar -->
             <div class="flex flex-wrap items-center gap-2">
                 <button onclick="loadPreset('test7')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 border border-brand-200 hover:bg-brand-100 transition flex items-center gap-1.5">
-                    <i class="fa-solid font-normal fa-vial"></i> Тестовий граф (n=7)
+                    <i class="fa-solid font-normal fa-vial"></i> Тестовий граф ($n=7$)
                 </button>
                 <button onclick="loadPreset('random')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-dice"></i> Випадковий
@@ -135,7 +146,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <!-- Vertex Count -->
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Кількість вершин (n):</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Кількість вершин ($n$):</label>
                         <div class="flex items-center space-x-1">
                             <button onclick="changeN(-1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition flex items-center justify-center">-</button>
                             <input type="number" id="inputN" min="2" max="12" value="7" onchange="setN(parseInt(this.value))" class="w-full text-center py-1 font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
@@ -144,7 +155,7 @@
                     </div>
                     <!-- Start Vertex -->
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Початкова вершина (v<sub>s</sub>):</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Початкова вершина ($v_s$):</label>
                         <select id="startVertexSelect" onchange="setStartVertex(parseInt(this.value))" class="w-full py-1.5 px-3 font-semibold text-brand-700 bg-brand-50 border border-brand-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
                             <!-- Populated dynamically -->
                         </select>
@@ -179,13 +190,13 @@
 
                 <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs flex flex-wrap items-center justify-around gap-2 text-slate-600">
                     <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Початкова (v<sub>s</sub>)
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span><span>Початкова ($v_s$)</span>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-brand-500 inline-block"></span> Активний шлях
+                        <span class="w-3 h-3 rounded-full bg-brand-500 inline-block"></span><span>Активний шлях</span>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-slate-400 inline-block"></span> Звичайна вершина
+                        <span class="w-3 h-3 rounded-full bg-slate-400 inline-block"></span><span>Звичайна вершина</span>
                     </div>
                 </div>
             </div>
@@ -194,10 +205,10 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-table-cells text-brand-600"></i> Матриця ваг (W)
+                        <i class="fa-solid fa-table-cells text-brand-600"></i><span>Матриця ваг ($W$)</span>
                     </h2>
                     <span class="text-[11px] text-slate-500">
-                        <span class="font-semibold text-slate-700">0</span> або порожньо = ∞ (нескінченність)
+                        <span class="font-semibold text-slate-700">$0$</span> або порожньо $= \infty$ (нескінченність)
                     </span>
                 </div>
 
@@ -221,13 +232,13 @@
             <!-- TAB NAVIGATION HEADER -->
             <div class="bg-white rounded-2xl p-1.5 shadow-sm border border-slate-200 flex flex-wrap gap-1">
                 <button onclick="switchTab('summary')" id="tabBtn-summary" class="tab-btn flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl text-brand-700 bg-brand-50 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-route"></i> Найкоротші шляхи
+                    <i class="fa-solid fa-route"></i><span>Найкоротші шляхи</span>
                 </button>
                 <button onclick="switchTab('lambda')" id="tabBtn-lambda" class="tab-btn flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-table"></i> Матриця Λ
+                    <i class="fa-solid fa-table"></i><span>Матриця $\Lambda$</span>
                 </button>
                 <button onclick="switchTab('protocol')" id="tabBtn-protocol" class="tab-btn flex-1 min-w-[130px] py-2 px-3 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-list-check"></i> Протокол обчислень
+                    <i class="fa-solid fa-list-check"></i><span>Протокол обчислень</span>
                 </button>
             </div>
 
@@ -239,7 +250,7 @@
                             Підсумкова таблиця мінімальних шляхів
                         </h3>
                         <p class="text-xs text-slate-500">
-                            Результат виконання алгоритму Беллмана для початкової вершини <span id="summaryStartLabel" class="font-bold text-brand-600">v1</span>
+                            Результат виконання алгоритму Беллмана для початкової вершини <span id="summaryStartLabel" class="font-bold text-brand-600">$v_1$</span>
                         </p>
                     </div>
                     <div id="negativeCycleBadge" class="hidden px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5">
@@ -252,8 +263,8 @@
                         <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
                             <tr>
                                 <th class="p-3">Цільова вершина</th>
-                                <th class="p-3 text-center">Мін. дуг (m*)</th>
-                                <th class="p-3 text-center">Вага шляху (λ)</th>
+                                <th class="p-3 text-center">Мін. дуг ($m^*$)</th>
+                                <th class="p-3 text-center">Вага шляху ($\lambda$)</th>
                                 <th class="p-3">Оптимальний маршрут</th>
                                 <th class="p-3 text-center">Дія</th>
                             </tr>
@@ -269,7 +280,7 @@
             <div id="tab-lambda" class="tab-content hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col gap-4">
                 <div class="border-b border-slate-100 pb-3">
                     <h3 class="text-base font-bold text-slate-900">
-                        Матриця значень лямбда (Λ)
+                        Матриця значень $\lambda$ ($\Lambda$)
                     </h3>
                     <p class="text-xs text-slate-500">
                        
@@ -302,7 +313,7 @@
 
                     <!-- Step Filter Dropdown -->
                     <div class="flex items-center gap-2">
-                        <label class="text-xs font-semibold text-slate-600">Крок (m):</label>
+                        <label class="text-xs font-semibold text-slate-600">Крок ($m$):</label>
                         <select id="protocolStepSelect" onchange="renderProtocol()" class="py-1 px-3 text-xs font-semibold text-slate-800 bg-slate-100 border border-slate-300 rounded-lg focus:outline-none">
                             <!-- Dynamically populated -->
                         </select>
@@ -405,6 +416,22 @@ int main()
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
+        // KaTeX Auto-Render Helper
+        function renderMath(target = document.body) {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(target, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false },
+                        { left: '\\(', right: '\\)', display: false },
+                        { left: '\\[', right: '\\]', display: true }
+                    ],
+                    throwOnError: false,
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                });
+            }
+        }
+
         // Global Constants & State
         const SUP = 10000; // Infinity value matching C++ standard
         let n = 7;
@@ -446,6 +473,7 @@ int main()
         window.onload = function() {
             loadPreset('test7');
             setupDragAndDrop();
+            renderMath();
         };
 
         // Preset Loaders
@@ -542,19 +570,22 @@ int main()
             renderProtocolOptions();
             renderProtocol();
             renderSvgGraph();
+            renderMath();
         }
 
         function populateStartSelect() {
             const select = document.getElementById('startVertexSelect');
             select.innerHTML = '';
+            const subscripts = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+            const toSub = (num) => String(num).split('').map(d => subscripts[d] || d).join('');
             for (let i = 0; i < n; i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
-                opt.textContent = `Вершина v${i + 1}`;
+                opt.textContent = `Вершина v${toSub(i + 1)}`;
                 if (i === startVertex) opt.selected = true;
                 select.appendChild(opt);
             }
-            document.getElementById('summaryStartLabel').textContent = `v${startVertex + 1}`;
+            document.getElementById('summaryStartLabel').textContent = `$v_{${startVertex + 1}}$`;
         }
 
         // ==========================================
@@ -708,16 +739,16 @@ int main()
             const head = document.getElementById('matrixHead');
             const body = document.getElementById('matrixBody');
 
-            let headHtml = `<tr><th class="p-2 border-b border-r border-slate-200 bg-slate-200 text-slate-700">v<sub>i</sub> \\ v<sub>j</sub></th>`;
+            let headHtml = `<tr><th class="p-2 border-b border-r border-slate-200 bg-slate-200 text-slate-700">$v_i \\setminus v_j$</th>`;
             for (let j = 0; j < n; j++) {
-                headHtml += `<th class="p-2 border-b border-slate-200 text-slate-700">v<sub>${j + 1}</sub></th>`;
+                headHtml += `<th class="p-2 border-b border-slate-200 text-slate-700">$v_{${j + 1}}$</th>`;
             }
             headHtml += `</tr>`;
             head.innerHTML = headHtml;
 
             let bodyHtml = '';
             for (let i = 0; i < n; i++) {
-                bodyHtml += `<tr><td class="p-2 font-bold bg-slate-100 text-slate-700 border-r border-slate-200">v<sub>${i + 1}</sub></td>`;
+                bodyHtml += `<tr><td class="p-2 font-bold bg-slate-100 text-slate-700 border-r border-slate-200">$v_{${i + 1}}$</td>`;
                 for (let j = 0; j < n; j++) {
                     let val = W[i][j];
                     let displayVal = (val === 0 || val === null || val === undefined) ? '' : val;
@@ -727,9 +758,9 @@ int main()
                         <input type="number" 
                             value="${displayVal}" 
                             placeholder="∞"
-                            ${isSelf ? 'disabled class="bg-slate-100 cursor-not-allowed"' : ''}
+                            ${isSelf ? 'disabled' : ''}
                             onchange="updateMatrixCell(${i}, ${j}, this.value)"
-                            class="w-12 h-8 text-center text-xs font-semibold rounded-md border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none transition ${isSelf ? 'text-slate-400' : 'text-slate-800 bg-white hover:border-slate-400'}">
+                            class="w-12 h-8 text-center text-xs font-semibold rounded-md border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none transition ${isSelf ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'text-slate-800 bg-white hover:border-slate-400'}">
                     </td>`;
                 }
                 bodyHtml += `</tr>`;
@@ -761,13 +792,13 @@ int main()
                 if (!p.reachable) {
                     pathText = '<span class="text-slate-400 italic">Шлях відсутній</span>';
                 } else {
-                    pathText = p.pathNodes.map(idx => `<span class="px-2 py-0.5 rounded font-mono font-bold ${idx === startVertex ? 'bg-emerald-100 text-emerald-800' : 'bg-brand-50 text-brand-700'}">v${idx + 1}</span>`).join(' <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i> ');
+                    pathText = p.pathNodes.map(idx => `<span class="px-2 py-0.5 rounded font-bold ${idx === startVertex ? 'bg-emerald-100 text-emerald-800' : 'bg-brand-50 text-brand-700'}">$v_{${idx + 1}}$</span>`).join('<span>$\\to$</span>');
                 }
 
-                let weightText = (p.weight >= SUP / 2) ? '<span class="text-rose-500 font-bold">∞</span>' : `<span class="font-bold text-slate-900">${p.weight}</span>`;
+                let weightText = (p.weight >= SUP / 2) ? '<span class="text-rose-500 font-bold">$\\infty$</span>' : `<span class="font-bold text-slate-900">$${p.weight}$</span>`;
 
                 tr.innerHTML = `
-                    <td class="p-3 font-bold text-slate-800">v<sub>${k + 1}</sub> ${k === startVertex ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-1 font-normal">Старт</span>' : ''}</td>
+                    <td class="p-3 font-bold text-slate-800">$v_{${k + 1}}$${k === startVertex ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-1.5 font-normal">Старт</span>' : ''}</td>
                     <td class="p-3 text-center font-semibold text-slate-600">${p.minArcs}</td>
                     <td class="p-3 text-center">${weightText}</td>
                     <td class="p-3 flex items-center gap-1 flex-wrap">${pathText}</td>
@@ -786,19 +817,19 @@ int main()
             const head = document.getElementById('lambdaHead');
             const body = document.getElementById('lambdaBody');
 
-            let headHtml = `<tr><th class="p-2 border-r border-slate-200">i</th>`;
+            let headHtml = `<tr><th class="p-2 border-r border-slate-200">$i$</th>`;
             for (let m = 0; m < n; m++) {
-                headHtml += `<th class="p-2">Λ<sup>(${m})</sup></th>`;
+                headHtml += `<th class="p-2">$\\Lambda^{(${m})}$</th>`;
             }
             headHtml += `</tr>`;
             head.innerHTML = headHtml;
 
             let bodyHtml = '';
             for (let i = 0; i < n; i++) {
-                bodyHtml += `<tr class="hover:bg-slate-50"><td class="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-200">v<sub>${i + 1}</sub></td>`;
+                bodyHtml += `<tr class="hover:bg-slate-50"><td class="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-200">$v_{${i + 1}}$</td>`;
                 for (let m = 0; m < n; m++) {
                     let val = bellmanResult.lmd[i][m];
-                    let text = (val >= SUP / 2) ? '∞' : val;
+                    let text = (val >= SUP / 2) ? '$\\infty$' : `$${val}$`;
                     let isStart = (i === startVertex);
                     let minArcs = bellmanResult.paths[i]?.minArcs;
                     let isMinStabilized = (m === minArcs && !isStart);
@@ -840,14 +871,15 @@ int main()
             let html = '';
             stepData.logs.forEach(log => {
                 let targetIdx = log.target;
+                let minText = log.minVal >= SUP / 2 ? '\\infty' : log.minVal;
                 html += `
                 <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-2">
                     <div class="flex items-center justify-between border-b border-slate-200 pb-2">
                         <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-brand-500"></span> Пошук min для λ<sup>(${stepM})</sup> при і = ${targetIdx + 1} (вершина v<sub>${targetIdx + 1}</sub>)
+                            <span class="w-2 h-2 rounded-full bg-brand-500"></span><span>Пошук $\\min$ для $\\lambda_{${targetIdx + 1}}^{(${stepM})}$ при $i = ${targetIdx + 1}$ (вершина $v_{${targetIdx + 1}}$)</span>
                         </span>
-                        <span class="text-xs font-mono font-bold ${log.minVal >= SUP / 2 ? 'text-rose-600' : 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200'}">
-                            min = ${log.minVal >= SUP / 2 ? '∞' : log.minVal}
+                        <span class="text-xs font-bold ${log.minVal >= SUP / 2 ? 'text-rose-600' : 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200'}">
+                            $\\min = ${minText}$
                         </span>
                     </div>
 
@@ -855,15 +887,15 @@ int main()
                 `;
 
                 log.candidates.forEach(c => {
-                    let prevLText = (c.prevL >= SUP / 2) ? '∞' : c.prevL;
-                    let wText = (c.wEdge >= SUP / 2) ? '∞' : c.wEdge;
-                    let sumText = (c.sum >= SUP / 2) ? '∞' : c.sum;
+                    let prevLText = (c.prevL >= SUP / 2) ? '\\infty' : c.prevL;
+                    let wText = (c.wEdge >= SUP / 2) ? '\\infty' : c.wEdge;
+                    let sumText = (c.sum >= SUP / 2) ? '\\infty' : c.sum;
                     let isSelected = (c.from === log.selectedPrev && log.minVal < SUP / 2);
 
                     html += `
-                    <div class="p-2 rounded-lg text-xs font-mono border ${isSelected ? 'bg-blue-50 border-brand-300 text-brand-900 font-semibold' : 'bg-white border-slate-200 text-slate-600'} flex items-center justify-between">
-                        <span>v<sub>${c.from + 1}</sub>: ${prevLText} + ${wText}</span>
-                        <span class="font-bold">${sumText} ${isSelected ? '<i class="fa-solid fa-check text-brand-600 ml-1"></i>' : ''}</span>
+                    <div class="p-2 rounded-lg text-xs border ${isSelected ? 'bg-blue-50 border-brand-300 text-brand-900 font-semibold' : 'bg-white border-slate-200 text-slate-600'} flex items-center justify-between">
+                        <span>$v_{${c.from + 1}}: ${prevLText} + ${wText}$</span>
+                        <span class="font-bold flex items-center gap-1"><span>$${sumText}$</span>${isSelected ? '<i class="fa-solid fa-check text-brand-600"></i>' : ''}</span>
                     </div>`;
                 });
 
@@ -873,6 +905,7 @@ int main()
             });
 
             container.innerHTML = html;
+            renderMath(container);
         }
 
         // ==========================================
@@ -1000,8 +1033,9 @@ int main()
                 label.setAttribute('text-anchor', 'middle');
                 label.setAttribute('font-size', '12');
                 label.setAttribute('font-weight', 'bold');
+                label.setAttribute('font-family', 'Times New Roman, serif');
                 label.setAttribute('fill', (isStart || isInPath) ? '#ffffff' : '#1e293b');
-                label.textContent = `v${i + 1}`;
+                label.innerHTML = `<tspan font-style="italic">v</tspan><tspan dy="3" font-size="9">${i + 1}</tspan>`;
 
                 group.appendChild(circle);
                 group.appendChild(label);
@@ -1082,6 +1116,7 @@ int main()
             const activeBtn = document.getElementById(`tabBtn-${tabId}`);
             activeBtn.classList.add('bg-brand-50', 'text-brand-700');
             activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+            renderMath(document.getElementById(`tab-${tabId}`));
         }
 
         // Code Copy Helper
